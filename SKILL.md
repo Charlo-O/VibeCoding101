@@ -42,6 +42,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-setup.ps1 -Deep
 
 Use `-WhatIf` with `install-base.ps1`, `configure-mcp.ps1`, and `install-skills.ps1` when you want a dry run first.
 
+`install-skills.ps1` now runs a lightweight post-install check after a real install or update. Keep `verify-setup.ps1` as the final explicit confirmation step after the full bootstrap flow.
+
 ### macOS
 
 Run from the skill root:
@@ -58,6 +60,8 @@ bash ./scripts/verify-setup.sh --deep
 ```
 
 Use `--dry-run` with `install-base.sh`, `configure-mcp.sh`, and `install-skills.sh` before making changes.
+
+`install-skills.sh` now runs a lightweight post-install check after a real install or update. Keep `verify-setup.sh` as the final explicit confirmation step after the full bootstrap flow.
 
 ## Script Guide
 
@@ -115,12 +119,14 @@ Use `--dry-run` with `install-base.sh`, `configure-mcp.sh`, and `install-skills.
 - Audit the starter skill set: `find-skills`, `playwright`, `screenshot`, `netlify-deploy`, `imagegen`, `openai-docs`.
 - Optionally install this skill into `~/.codex/skills` with `-InstallSelf`.
 - Optionally copy additional local skill folders into `~/.codex/skills` with `-LocalSkillPaths`.
+- Run `verify-setup.ps1` automatically after a real install or update. Use `-SkipVerify` to skip the post-install check and `-DeepVerify` for a deeper one.
 - When starter skills are missing, prefer routing further installs through the existing `skill-installer` system skill instead of hardcoding remote sources here.
 
 ### `scripts/install-skills.sh`
 
 - Do the same skill audit and local skill copy workflow on macOS with Bash.
-- Support `--install-self`, `--force-self-update`, `--local-skill-path`, and `--dry-run`.
+- Support `--install-self`, `--force-self-update`, `--local-skill-path`, `--dry-run`, `--skip-verify`, and `--deep-verify`.
+- Run `verify-setup.sh` automatically after a real install or update unless `--skip-verify` is used.
 - When starter skills are missing, print a suggested next prompt that uses `skill-installer`.
 
 ### `scripts/verify-setup.ps1`

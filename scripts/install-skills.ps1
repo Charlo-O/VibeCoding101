@@ -3,6 +3,8 @@ param(
     [string]$CodexHome = $(if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE ".codex" }),
     [switch]$InstallSelf,
     [switch]$ForceSelfUpdate,
+    [switch]$SkipVerify,
+    [switch]$DeepVerify,
     [string[]]$LocalSkillPaths = @(),
     [string[]]$StarterSkills = @("find-skills", "playwright", "screenshot", "netlify-deploy", "imagegen", "openai-docs")
 )
@@ -54,6 +56,28 @@ function Get-SkillNameFromPath {
     return (Split-Path -Leaf $SourcePath)
 }
 
+function Copy-SkillPayload {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationPath
+    )
+
+    $payloadItems = @("README.md", "SKILL.md", "agents", "references", "scripts", "assets")
+    if (-not (Test-Path $DestinationPath)) {
+        New-Item -ItemType Directory -Path $DestinationPath -Force | Out-Null
+    }
+
+    foreach ($item in $payloadItems) {
+        $sourceItem = Join-Path $SourcePath $item
+        if (Test-Path $sourceItem) {
+            Copy-Item -Path $sourceItem -Destination $DestinationPath -Recurse -Force
+        }
+    }
+}
+
 function Install-LocalSkillFolder {
     param(
         [Parameter(Mandatory = $true)]
@@ -80,7 +104,7 @@ function Install-LocalSkillFolder {
         if ($PSCmdlet.ShouldProcess($destinationPath, "Backup and replace skill from $resolvedSource")) {
             Copy-Item -Path $destinationPath -Destination $backupPath -Recurse -Force
             Remove-Item -Path $destinationPath -Recurse -Force
-            Copy-Item -Path $resolvedSource -Destination $destinationPath -Recurse -Force
+            Copy-SkillPayload -SourcePath $resolvedSource -DestinationPath $destinationPath
         }
 
         return [pscustomobject]@{
@@ -91,13 +115,39 @@ function Install-LocalSkillFolder {
     }
 
     if ($PSCmdlet.ShouldProcess($destinationPath, "Copy local skill from $resolvedSource")) {
-        Copy-Item -Path $resolvedSource -Destination $destinationPath -Recurse -Force
+        Copy-SkillPayload -SourcePath $resolvedSource -DestinationPath $destinationPath
     }
 
     return [pscustomobject]@{
         name   = $skillName
         status = "installed"
         note   = $destinationPath
+    }
+}
+
+function Invoke-PostInstallCheck {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CodexHome,
+
+        [switch]$DeepVerify
+    )
+
+    $verifyScript = Join-Path $PSScriptRoot "verify-setup.ps1"
+    if (-not (Test-Path $verifyScript)) {
+        Write-Warning "verify-setup.ps1 was not found, so the post-install check was skipped."
+        return
+    }
+
+    Write-Output "Post-install check"
+    $arguments = @("-ExecutionPolicy", "Bypass", "-File", $verifyScript, "-CodexHome", $CodexHome)
+    if ($DeepVerify) {
+        $arguments += "-Deep"
+    }
+
+    & powershell.exe @arguments
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
     }
 }
 
@@ -164,4 +214,10 @@ if ($missingStarterSkills.Count -gt 0) {
     else {
         Write-Warning "skill-installer is not available in .system. Install missing skills manually or add skill-installer first."
     }
+}
+
+$shouldRunPostInstallCheck = (-not $WhatIfPreference) -and (-not $SkipVerify) -and ($InstallSelf -or $LocalSkillPaths.Count -gt 0)
+if ($shouldRunPostInstallCheck) {
+    Write-Output ""
+    Invoke-PostInstallCheck -CodexHome $CodexHome -DeepVerify:$DeepVerify
 }

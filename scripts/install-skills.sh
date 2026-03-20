@@ -5,6 +5,8 @@ CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 INSTALL_SELF=0
 FORCE_SELF_UPDATE=0
 DRY_RUN=0
+SKIP_VERIFY=0
+DEEP_VERIFY=0
 LOCAL_SKILL_PATHS=()
 STARTER_SKILLS=("find-skills" "playwright" "screenshot" "netlify-deploy" "imagegen" "openai-docs")
 
@@ -28,6 +30,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       DRY_RUN=1
+      shift
+      ;;
+    --skip-verify)
+      SKIP_VERIFY=1
+      shift
+      ;;
+    --deep-verify)
+      DEEP_VERIFY=1
       shift
       ;;
     *)
@@ -74,6 +84,19 @@ skill_name_from_source() {
   basename "$source_path"
 }
 
+copy_skill_payload() {
+  local source_path="$1"
+  local destination_path="$2"
+  local payload_items=("README.md" "SKILL.md" "agents" "references" "scripts" "assets")
+
+  mkdir -p "$destination_path"
+  for item in "${payload_items[@]}"; do
+    if [[ -e "$source_path/$item" ]]; then
+      cp -R "$source_path/$item" "$destination_path/"
+    fi
+  done
+}
+
 copy_skill_folder() {
   local source_path="$1"
   local destination_root="$2"
@@ -105,7 +128,7 @@ copy_skill_folder() {
 
     cp -R "$destination_path" "$backup_path"
     rm -rf "$destination_path"
-    cp -R "$source_path" "$destination_path"
+    copy_skill_payload "$source_path" "$destination_path"
     printf '%-22s %-18s %s\n' "$skill_name" "updated" "$destination_path"
     return
   fi
@@ -115,7 +138,7 @@ copy_skill_folder() {
     return
   fi
 
-  cp -R "$source_path" "$destination_path"
+  copy_skill_payload "$source_path" "$destination_path"
   printf '%-22s %-18s %s\n' "$skill_name" "installed" "$destination_path"
 }
 
@@ -165,5 +188,20 @@ if [[ ${#missing[@]} -gt 0 ]]; then
     echo "Suggested prompt: Use \$skill-installer to install these skills: ${missing[*]}"
   else
     echo "skill-installer is not available in .system. Install missing skills manually or add skill-installer first." >&2
+  fi
+fi
+
+if (( DRY_RUN == 0 && SKIP_VERIFY == 0 )) && (( INSTALL_SELF == 1 || ${#LOCAL_SKILL_PATHS[@]} > 0 )); then
+  verify_script="$(cd "$(dirname "$0")" && pwd -P)/verify-setup.sh"
+  if [[ -f "$verify_script" ]]; then
+    echo
+    echo "Post-install check"
+    if (( DEEP_VERIFY )); then
+      bash "$verify_script" --codex-home "$CODEX_HOME" --deep
+    else
+      bash "$verify_script" --codex-home "$CODEX_HOME"
+    fi
+  else
+    echo "verify-setup.sh was not found, so the post-install check was skipped." >&2
   fi
 fi

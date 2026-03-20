@@ -78,6 +78,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skills.ps1 -InstallSe
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-setup.ps1 -Deep
 ```
 
+说明：`install-skills.ps1` 在真正完成安装或更新后，会自动做一次轻量检查；最后这条 `verify-setup.ps1 -Deep` 仍然建议保留，作为完整流程的最终确认。
+
 ### Windows 脚本说明
 
 - `check-env.ps1`
@@ -87,7 +89,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-setup.ps1 -Deep
 - `configure-mcp.ps1`
   为 `~/.codex/config.toml` 补齐常用 MCP 配置，并自动备份原文件。
 - `install-skills.ps1`
-  检查常用 skill 是否存在，也可以把当前 skill 安装到 `~/.codex/skills`。
+  检查常用 skill 是否存在，也可以把当前 skill 安装到 `~/.codex/skills`。安装或更新完成后会自动跑一次轻量检查；如果你只想安装不检查，可以加 `-SkipVerify`，想做更深入的检查可以加 `-DeepVerify`。
 - `verify-setup.ps1`
   最终验证当前环境是否达到可用状态，`-Deep` 会做更深入的运行时检查。
 
@@ -106,6 +108,8 @@ bash ./scripts/install-skills.sh --install-self
 bash ./scripts/verify-setup.sh --deep
 ```
 
+说明：`install-skills.sh` 在真正完成安装或更新后，会自动做一次轻量检查；最后这条 `verify-setup.sh --deep` 仍然建议保留，作为完整流程的最终确认。
+
 ### macOS 脚本说明
 
 - `check-env.sh`
@@ -115,7 +119,7 @@ bash ./scripts/verify-setup.sh --deep
 - `configure-mcp.sh`
   为 `~/.codex/config.toml` 补齐常用 MCP 配置，并自动备份原文件。
 - `install-skills.sh`
-  检查常用 skill 是否存在，也可以把当前 skill 安装到 `~/.codex/skills`。
+  检查常用 skill 是否存在，也可以把当前 skill 安装到 `~/.codex/skills`。安装或更新完成后会自动跑一次轻量检查；如果你只想安装不检查，可以加 `--skip-verify`，想做更深入的检查可以加 `--deep-verify`。
 - `verify-setup.sh`
   最终验证当前环境是否达到可用状态，`--deep` 会做更深入的运行时检查。
 
