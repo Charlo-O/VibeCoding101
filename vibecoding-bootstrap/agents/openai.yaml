@@ -1,0 +1,7 @@
+interface:
+  display_name: "VibeCoding Bootstrap"
+  short_description: "Bootstrap a Windows or macOS vibecoding setup"
+  default_prompt: "Use $vibecoding-bootstrap to inspect my Windows or macOS machine and set up a beginner-friendly vibecoding environment."
+
+policy:
+  allow_implicit_invocation: true
