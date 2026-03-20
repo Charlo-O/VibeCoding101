@@ -58,11 +58,27 @@ skill_location() {
   fi
 }
 
+skill_name_from_source() {
+  local source_path="$1"
+  local skill_file="$source_path/SKILL.md"
+
+  if [[ -f "$skill_file" ]]; then
+    local parsed_name
+    parsed_name="$(awk '/^name:[[:space:]]*/ { sub(/^name:[[:space:]]*/, "", $0); gsub(/"/, "", $0); print; exit }' "$skill_file")"
+    if [[ -n "$parsed_name" ]]; then
+      printf '%s' "$parsed_name"
+      return
+    fi
+  fi
+
+  basename "$source_path"
+}
+
 copy_skill_folder() {
   local source_path="$1"
   local destination_root="$2"
   local skill_name
-  skill_name="$(basename "$source_path")"
+  skill_name="$(skill_name_from_source "$source_path")"
   local destination_path="$destination_root/$skill_name"
 
   if [[ -d "$destination_path" ]]; then

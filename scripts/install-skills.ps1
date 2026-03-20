@@ -36,6 +36,24 @@ function Get-SkillLocation {
     return "missing"
 }
 
+function Get-SkillNameFromPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath
+    )
+
+    $skillFile = Join-Path $SourcePath "SKILL.md"
+    if (Test-Path $skillFile) {
+        $content = Get-Content -Raw $skillFile
+        $match = [regex]::Match($content, '(?m)^name:\s*"?([^"\r\n]+)"?\s*$')
+        if ($match.Success) {
+            return $match.Groups[1].Value.Trim()
+        }
+    }
+
+    return (Split-Path -Leaf $SourcePath)
+}
+
 function Install-LocalSkillFolder {
     param(
         [Parameter(Mandatory = $true)]
@@ -46,7 +64,7 @@ function Install-LocalSkillFolder {
     )
 
     $resolvedSource = (Resolve-Path $SourcePath).Path
-    $skillName = Split-Path -Leaf $resolvedSource
+    $skillName = Get-SkillNameFromPath -SourcePath $resolvedSource
     $destinationPath = Join-Path $DestinationRoot $skillName
 
     if (Test-Path $destinationPath) {
