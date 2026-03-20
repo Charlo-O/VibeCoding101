@@ -78,6 +78,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skills.ps1 -InstallSe
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-setup.ps1 -Deep
 ```
 
+说明：`install-base.ps1`、`configure-mcp.ps1`、`install-skills.ps1` 在真正执行后都会自动做一次轻量检查。你也可以用 `-SkipVerify` 跳过检查，或用 `-DeepVerify` 做更严格的运行时检查。
+
 说明：`install-skills.ps1` 在真正完成安装或更新后，会自动做一次轻量检查；最后这条 `verify-setup.ps1 -Deep` 仍然建议保留，作为完整流程的最终确认。
 
 ### Windows 脚本说明
@@ -85,9 +87,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-setup.ps1 -Deep
 - `check-env.ps1`
   检查当前机器是否已经具备基础依赖、MCP 配置和常用 skill。
 - `install-base.ps1`
-  使用 `winget` 安装缺失的基础工具，并尝试启用 `corepack` 与 `pnpm`。
+  使用 `winget` 安装缺失的基础工具，并尝试启用 `corepack` 与 `pnpm`。真实执行后会自动做一次基础环境检查；如果你只想执行不检查，可以加 `-SkipVerify`，想做更严格的检查可以加 `-DeepVerify`。
 - `configure-mcp.ps1`
-  为 `~/.codex/config.toml` 补齐常用 MCP 配置，并自动备份原文件。
+  为 `~/.codex/config.toml` 补齐常用 MCP 配置，并自动备份原文件。真实执行后会自动做一次 MCP 配置检查；如果你只想执行不检查，可以加 `-SkipVerify`，想做更严格的检查可以加 `-DeepVerify`。
 - `install-skills.ps1`
   检查常用 skill 是否存在，也可以把当前 skill 安装到 `~/.codex/skills`。安装或更新完成后会自动跑一次轻量检查；如果你只想安装不检查，可以加 `-SkipVerify`，想做更深入的检查可以加 `-DeepVerify`。
 - `verify-setup.ps1`
@@ -108,6 +110,8 @@ bash ./scripts/install-skills.sh --install-self
 bash ./scripts/verify-setup.sh --deep
 ```
 
+说明：`install-base.sh`、`configure-mcp.sh`、`install-skills.sh` 在真正执行后都会自动做一次轻量检查。你也可以用 `--skip-verify` 跳过检查，或用 `--deep-verify` 做更严格的运行时检查。
+
 说明：`install-skills.sh` 在真正完成安装或更新后，会自动做一次轻量检查；最后这条 `verify-setup.sh --deep` 仍然建议保留，作为完整流程的最终确认。
 
 ### macOS 脚本说明
@@ -115,9 +119,9 @@ bash ./scripts/verify-setup.sh --deep
 - `check-env.sh`
   检查当前机器上的 Homebrew、基础依赖、MCP 配置和常用 skill。
 - `install-base.sh`
-  使用 `brew` 安装缺失的基础工具，并尝试启用 `corepack` 与 `pnpm`。
+  使用 `brew` 安装缺失的基础工具，并尝试启用 `corepack` 与 `pnpm`。真实执行后会自动做一次基础环境检查；如果你只想执行不检查，可以加 `--skip-verify`，想做更严格的检查可以加 `--deep-verify`。
 - `configure-mcp.sh`
-  为 `~/.codex/config.toml` 补齐常用 MCP 配置，并自动备份原文件。
+  为 `~/.codex/config.toml` 补齐常用 MCP 配置，并自动备份原文件。真实执行后会自动做一次 MCP 配置检查；如果你只想执行不检查，可以加 `--skip-verify`，想做更严格的检查可以加 `--deep-verify`。
 - `install-skills.sh`
   检查常用 skill 是否存在，也可以把当前 skill 安装到 `~/.codex/skills`。安装或更新完成后会自动跑一次轻量检查；如果你只想安装不检查，可以加 `--skip-verify`，想做更深入的检查可以加 `--deep-verify`。
 - `verify-setup.sh`

@@ -42,6 +42,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-setup.ps1 -Deep
 
 Use `-WhatIf` with `install-base.ps1`, `configure-mcp.ps1`, and `install-skills.ps1` when you want a dry run first.
 
+`install-base.ps1`, `configure-mcp.ps1`, and `install-skills.ps1` now run a lightweight post-step check after a real change. Use `-SkipVerify` to skip that check and `-DeepVerify` when you want a stricter runtime pass.
+
 `install-skills.ps1` now runs a lightweight post-install check after a real install or update. Keep `verify-setup.ps1` as the final explicit confirmation step after the full bootstrap flow.
 
 ### macOS
@@ -60,6 +62,8 @@ bash ./scripts/verify-setup.sh --deep
 ```
 
 Use `--dry-run` with `install-base.sh`, `configure-mcp.sh`, and `install-skills.sh` before making changes.
+
+`install-base.sh`, `configure-mcp.sh`, and `install-skills.sh` now run a lightweight post-step check after a real change. Use `--skip-verify` to skip that check and `--deep-verify` when you want a stricter runtime pass.
 
 `install-skills.sh` now runs a lightweight post-install check after a real install or update. Keep `verify-setup.sh` as the final explicit confirmation step after the full bootstrap flow.
 
@@ -86,6 +90,7 @@ Use `--dry-run` with `install-base.sh`, `configure-mcp.sh`, and `install-skills.
 - Target `Git.Git`, `OpenJS.NodeJS.LTS`, `Python.Python.3.12`, and `astral-sh.uv`.
 - Refresh common PATH locations in the current shell after installs.
 - Enable `corepack` and activate `pnpm` when Node.js is available.
+- Run a post-install base tool check after a real run. Use `-SkipVerify` to skip the check and `-DeepVerify` for runtime command checks.
 - If a newly installed command still is not visible, stop and tell the user to restart the terminal or Codex, then rerun verification.
 
 ### `scripts/install-base.sh`
@@ -94,6 +99,7 @@ Use `--dry-run` with `install-base.sh`, `configure-mcp.sh`, and `install-skills.
 - Target `git`, `node`, `python`, and `uv`.
 - Stop early if Homebrew is missing, then tell the user to install Homebrew first from the official site.
 - Enable `corepack` and activate `pnpm` when Node.js is available.
+- Run a post-install base tool check after a real run. Use `--skip-verify` to skip the check and `--deep-verify` for runtime command checks.
 - Tell the user to open a fresh shell when a newly installed command is not yet visible.
 
 ### `scripts/configure-mcp.ps1`
@@ -105,13 +111,15 @@ Use `--dry-run` with `install-base.sh`, `configure-mcp.sh`, and `install-skills.
   - `context7` via `npx -y @upstash/context7-mcp`
   - `fetch` via `uvx mcp-server-fetch`
   - `shadcn` via `npx shadcn-vue@latest mcp`
+- Run a post-config MCP check after a real run. Use `-SkipVerify` to skip the check and `-DeepVerify` for runtime command checks.
 - Do not overwrite existing MCP blocks unless the user explicitly asks for cleanup or refactoring.
 
 ### `scripts/configure-mcp.sh`
 
 - Do the same MCP setup on macOS with Bash.
-- Support `--dry-run`.
+- Support `--dry-run`, `--skip-verify`, and `--deep-verify`.
 - Append only missing MCP blocks and back up the existing `config.toml` first.
+- Run a post-config MCP check after a real run unless `--skip-verify` is used.
 
 ### `scripts/install-skills.ps1`
 

@@ -3,6 +3,8 @@ set -euo pipefail
 
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 DRY_RUN=0
+SKIP_VERIFY=0
+DEEP_VERIFY=0
 PROFILES=("context7" "fetch" "shadcn")
 
 while [[ $# -gt 0 ]]; do
@@ -17,6 +19,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       DRY_RUN=1
+      shift
+      ;;
+    --skip-verify)
+      SKIP_VERIFY=1
+      shift
+      ;;
+    --deep-verify)
+      DEEP_VERIFY=1
       shift
       ;;
     *)
@@ -59,6 +69,67 @@ EOF
   esac
 }
 
+has_mcp_section() {
+  local section="$1"
+  local file_path="$2"
+  [[ -f "$file_path" ]] && grep -Eq "^\\[mcp_servers\\.${section//./\\.}\\]$" "$file_path"
+}
+
+runtime_check() {
+  local name="$1"
+  shift
+
+  if output="$("$@" 2>&1 | head -n 1)"; then
+    printf '%-12s %-8s %s\n' "$name" "passed" "${output:-ok}"
+  else
+    printf '%-12s %-8s %s\n' "$name" "failed" "${output:-command failed}"
+    return 1
+  fi
+}
+
+post_config_check() {
+  local missing=()
+  local runtime_failed=0
+
+  for profile in "${PROFILES[@]}"; do
+    if ! has_mcp_section "$profile" "$config_path"; then
+      missing+=("$profile")
+    fi
+  done
+
+  echo
+  echo "Post-config check"
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Missing MCP profiles: ${missing[*]}" >&2
+  fi
+
+  if (( DEEP_VERIFY )); then
+    echo "Runtime checks"
+    printf '%-12s %-8s %s\n' "name" "status" "details"
+    for profile in "${PROFILES[@]}"; do
+      case "$profile" in
+        context7)
+          runtime_check "context7" npx -y @upstash/context7-mcp --help || runtime_failed=1
+          ;;
+        fetch)
+          runtime_check "fetch" uvx mcp-server-fetch --help || runtime_failed=1
+          ;;
+        shadcn)
+          runtime_check "shadcn" npx shadcn-vue@latest mcp --help || runtime_failed=1
+          ;;
+      esac
+    done
+  fi
+
+  if [[ ${#missing[@]} -eq 0 && $runtime_failed -eq 0 ]]; then
+    echo "MCP ready: True"
+    return 0
+  fi
+
+  echo "MCP ready: False"
+  return 1
+}
+
 mkdir -p "$CODEX_HOME"
 config_path="$CODEX_HOME/config.toml"
 temp_path="$(mktemp)"
@@ -99,6 +170,9 @@ if [[ ${#added[@]} -eq 0 ]]; then
     echo "Already configured: ${skipped[*]}"
   fi
   rm -f "$temp_path"
+  if (( DRY_RUN == 0 && SKIP_VERIFY == 0 )); then
+    post_config_check
+  fi
   exit 0
 fi
 
@@ -128,4 +202,8 @@ if [[ -n "$backup_path" ]]; then
 fi
 if [[ ${#skipped[@]} -gt 0 ]]; then
   echo "Already configured: ${skipped[*]}"
+fi
+
+if (( SKIP_VERIFY == 0 )); then
+  post_config_check
 fi

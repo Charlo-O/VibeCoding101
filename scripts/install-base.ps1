@@ -1,6 +1,8 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$PythonWingetId = "Python.Python.3.12"
+    [string]$PythonWingetId = "Python.Python.3.12",
+    [switch]$SkipVerify,
+    [switch]$DeepVerify
 )
 
 Set-StrictMode -Version Latest
@@ -97,6 +99,84 @@ function Install-WingetPackage {
     }
 }
 
+function Invoke-BaseRuntimeCheck {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Command,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    try {
+        $output = & $Command @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+        [pscustomobject]@{
+            name    = $Name
+            status  = if ($exitCode -eq 0) { "passed" } else { "failed" }
+            details = (($output | Select-Object -First 1) -as [string])
+        }
+    }
+    catch {
+        [pscustomobject]@{
+            name    = $Name
+            status  = "failed"
+            details = $_.Exception.Message
+        }
+    }
+}
+
+function Invoke-BasePostInstallCheck {
+    param(
+        [switch]$DeepVerify
+    )
+
+    $requiredTools = @("git", "node", "npx", "python", "uv", "uvx")
+    $missingTools = @($requiredTools | Where-Object { -not (Test-CommandExists -Name $_) })
+    $runtimeChecks = New-Object System.Collections.Generic.List[object]
+
+    if ($DeepVerify) {
+        $runtimeCommands = @(
+            @{ name = "git"; command = "git"; args = @("--version") }
+            @{ name = "node"; command = "node"; args = @("--version") }
+            @{ name = "npx"; command = "npx"; args = @("--version") }
+            @{ name = "python"; command = "python"; args = @("--version") }
+            @{ name = "uv"; command = "uv"; args = @("--version") }
+            @{ name = "uvx"; command = "uvx"; args = @("--version") }
+        )
+
+        foreach ($runtimeCommand in $runtimeCommands) {
+            if (Test-CommandExists -Name $runtimeCommand.command) {
+                $runtimeChecks.Add((Invoke-BaseRuntimeCheck -Name $runtimeCommand.name -Command $runtimeCommand.command -Arguments $runtimeCommand.args))
+            }
+        }
+    }
+
+    $ready = $missingTools.Count -eq 0
+    if ($DeepVerify -and ($runtimeChecks | Where-Object { $_.status -eq "failed" })) {
+        $ready = $false
+    }
+
+    Write-Output "Post-install check"
+    Write-Output ("Base ready: {0}" -f $ready)
+
+    if ($missingTools.Count -gt 0) {
+        Write-Warning ("Missing base tools: {0}" -f ($missingTools -join ", "))
+    }
+
+    if ($DeepVerify -and $runtimeChecks.Count -gt 0) {
+        Write-Output "Runtime checks"
+        $runtimeChecks | Format-Table -AutoSize | Out-String | Write-Output
+    }
+
+    if (-not $ready) {
+        exit 1
+    }
+}
+
 Refresh-KnownPaths
 
 $packages = @(
@@ -119,7 +199,14 @@ $pnpmStatus = [pscustomobject]@{
 Refresh-KnownPaths
 
 if (Test-CommandExists -Name "node") {
-    if (Test-CommandExists -Name "corepack") {
+    if (Test-CommandExists -Name "pnpm") {
+        $pnpmStatus = [pscustomobject]@{
+            name   = "pnpm"
+            status = "already-installed"
+            note   = "pnpm is already available."
+        }
+    }
+    elseif (Test-CommandExists -Name "corepack") {
         if ($PSCmdlet.ShouldProcess("corepack", "Enable corepack and activate pnpm")) {
             & corepack enable
             $enableExit = $LASTEXITCODE
@@ -167,4 +254,10 @@ $pnpmStatus | Format-Table -AutoSize | Out-String | Write-Output
 $failed = @($results | Where-Object { $_.status -eq "failed" })
 if ($failed.Count -gt 0 -or $pnpmStatus.status -eq "failed") {
     exit 1
+}
+
+$shouldRunPostInstallCheck = (-not $WhatIfPreference) -and (-not $SkipVerify)
+if ($shouldRunPostInstallCheck) {
+    Write-Output ""
+    Invoke-BasePostInstallCheck -DeepVerify:$DeepVerify
 }
